@@ -68,16 +68,14 @@ export function AppSidebar() {
     return (
         <Sidebar>
             <SidebarHeader>
-                <div className=''>
-                    <Image src={'/Logo.png'} alt='logo' width={200} height={200}
-                        className='w-full' />
+                <div className='mb-0'>
+                    <Image src={'/Logo.png'} alt='logo' width={200} height={200} className='w-full' />
                 </div>
             </SidebarHeader>
             <SidebarContent>
                 <SidebarGroup>
-
                     <SidebarGroupContent>
-                        <SidebarMenu className=''>
+                        <SidebarMenu className='mt-0'>
                             {items.map((item, index) => (
                                 // <SidebarMenuItem key={item.title} className='p-2'>
                                 //     <SidebarMenuButton asChild className=''>
