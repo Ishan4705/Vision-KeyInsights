@@ -1,4 +1,5 @@
 import { inngest } from "./client";
+import OpenAI from 'openai';
 
 export const helloWorld = inngest.createFunction(
   { id: "hello-world" },
@@ -15,6 +16,12 @@ const imageKit=new ImageKit({
   privateKey:process.env.ImageKit_PRIVATE_KEY,
   urlEndpoint:process.env.ImageKit_URL_ENDPOINT
 })
+
+
+export const openai = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
 
 
 
@@ -49,7 +56,35 @@ export const generateAiThumbnail = inngest.createFunction(
     )
 
     // generate thumbnail using ai service
-    
+    const generateThumbnailPrompt= await step.run('GenerateThumbnailPrompt', async()=>{
+       const completion = await openai.chat.completions.create({
+       model: 'google/gemini-2.5-flash',
+       messages: [
+       {
+          role: 'user',
+          content:[
+            {
+            "type": "text",
+            "text": uploadImageUrls?`Refering to this thumbnail url write a text prompt to generate 
+            youtube thumbnail similar to the attached reference image with the following user input:`+ userInput+'Only give me text prompt,No other comment text':
+            `Depends on user input write a text prompt to generate high quality professional youtube thumbnail prompt,Make sure to
+            Add relavent icons,illustrations or images as per title. UserInput:`+ userInput+'.Only give me text prompt,No other comment text'
+          },
+          {
+            "type": "image_url",
+            "image_url": {
+              "url": uploadImageUrls??``,
+            }
+          },
+          ],
+        },
+      ],
+      });
+
+      console.log(completion.choices[0].message.content);
+      return completion.choices[0].message.content;
+
+    })
     
     // generate image
 
@@ -57,7 +92,7 @@ export const generateAiThumbnail = inngest.createFunction(
     // save image to cloud storage
 
     // save image to database
-    return uploadImageUrls;
+    return generateThumbnailPrompt;
   }
 
 )
