@@ -1,6 +1,10 @@
+import { is } from "drizzle-orm";
 import { inngest } from "./client";
 import OpenAI from 'openai';
-
+import Replicate from 'replicate';
+import moment from 'moment';
+import { db } from "@/configs/db";
+import { AiThumbnailTable } from "@/configs/schema";
 export const helloWorld = inngest.createFunction(
   { id: "hello-world" },
   { event: "test/hello.world" },
@@ -23,6 +27,10 @@ export const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
+
+export const replicate=new Replicate({
+  auth:process.env.REPLICATE_API_KEY
+});
 
 
 export const generateAiThumbnail = inngest.createFunction(
@@ -87,12 +95,44 @@ export const generateAiThumbnail = inngest.createFunction(
     })
     
     // generate image
+    const generateThumbnailImage= await step.run('Generate Image', async()=>{
+      const input = {
+        prompt: generateThumbnailPrompt,
+        aspect_ratio: "16:9",
+        output_format: "png",
+        safety_filter_level: "block_only_high"
+      };
+      const output = await replicate.run("google/imagen-4-fast", { input });
 
+      //@ts-ignore
+      return output.url();
+    })
 
     // save image to cloud storage
+    const uploadThumbnail=await step.run('Upload Thumbnail',async()=>{
+      const imageRef=await imageKit.upload({
+        file:generateThumbnailImage,
+        fileName:Date.now()+'.png',
+        isPublished:true,
+        useUniqueFileName:false
+      })
+      return imageRef.url;
+    })
+    // save all records to database
+    const SaveToDB=await step.run('SaveToDB',async()=>{
+      const result=await db.insert(AiThumbnailTable).values({
+        userInput:userInput,
+        thumbnailUrl:uploadThumbnail,
+        // for this a npm moment library is used
+        createdOn:moment().format('yyyy-MM-DD'), 
+        refImage:uploadImageUrls,
+        userEmail:userEmail
+        //@ts-ignore
+      }).returning(AiThumbnailTable)
+      return result;
+    })
 
-    // save image to database
-    return generateThumbnailPrompt;
+    return SaveToDB;
   }
 
 )
