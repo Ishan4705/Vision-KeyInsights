@@ -1,6 +1,7 @@
 import { inngest } from '@/inngest/client';
 import { currentUser } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { run } from 'node:test';
 import { use } from 'react';
 export async function POST(request: NextRequest) {
     const formData = await request.formData();
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
         name: "ai/generate-thumbnail ",
         data: inputData,
     });
-    return NextResponse.json({ status: 'success', result });
+    return NextResponse.json({  runId: result.ids[0] });
 }
 
 

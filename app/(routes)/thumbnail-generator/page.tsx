@@ -1,7 +1,9 @@
 "use client"
+import { RunStatus } from '@/services/GlobalApi';
 import axios from 'axios';
-import { ArrowUp, ImagePlus, User, X } from 'lucide-react'
+import { ArrowUp, Divide, ImagePlus, Loader2, User, X } from 'lucide-react'
 import Image from 'next/image'
+import { resolve } from 'path';
 import React, { useState } from 'react'
 
 function ThumbnailGenerator() {
@@ -10,6 +12,9 @@ function ThumbnailGenerator() {
   const[faceImage,setFaceImage]=useState<any>();
   const[refImagePreview,setRefImagePreview]=useState<string>();
   const[faceImagePreview,setFaceImagePreview]=useState<string>();
+  const[loading,setLoading]=useState(false);
+  const[outputThumbnailImage,setOutputThumbnailImage]=useState('');
+
   const onHandlefielChange=(field:string,event:any)=>{
     const selectedFile = event.target.files[0];
     if(field === 'referenceImageUpload'){  
@@ -23,13 +28,44 @@ function ThumbnailGenerator() {
   }
 
   const onSubmit= async ()=>{
+    setLoading(true);
     const formData = new FormData();
     userInput && formData.append('userInput', userInput);
     refImage && formData.append('refImage', refImage);
     faceImage && formData.append('faceImage', faceImage);
     // POST api call to be implemented here
+    try{
     const result= await axios.post('/api/generate-thumbnail',formData);
+    
     console.log(result.data);
+
+    // pooling to check status of inngest function
+      while(true){
+        const runStatus=await RunStatus(result.data.runId);
+        // console.log('Run Status:', runStatus);
+        
+        if(runStatus && runStatus[0]?.status=='Completed'){
+          // console.log('Output:', runStatus[0]?.output);
+          // The output is the thumbnail URL returned from inngest function
+          const thumbnailUrl = runStatus[0]?.output;
+          if(thumbnailUrl) {
+            setOutputThumbnailImage(thumbnailUrl);
+          }
+          setLoading(false);
+          break;
+        }
+        if(runStatus && runStatus[0]?.status=='Cancelled' || runStatus && runStatus[0]?.status=='Failed') {
+          console.log('Function failed or cancelled');
+          setLoading(false);
+          break;
+        }
+        await new Promise(resolve=>setTimeout(resolve,1000));
+      }
+
+    }catch(err){
+      console.error('Error:', err);
+      setLoading(false);
+    }
   }
 
   return (
@@ -39,6 +75,21 @@ function ThumbnailGenerator() {
             <h2 className='text-3xl font-bold'>Thumbnail Generator</h2>
             <p className='text-gray-500 text-center'>Turn any video into an attention-grabbing magnet in seconds. No Design Skills needed!!</p>
         </div>
+
+        <div>
+          {loading ? <div className='w-full bg-secondary border rounded-2xl p-10 h-[250px] flex items-center justify-center mt-5'>
+            <Loader2 className='animate-spin'/>
+            <h2>Please wait...Thumbnail is generating...</h2>
+          </div>:
+          <div>
+            {outputThumbnailImage  && <Image src={outputThumbnailImage} alt='Thumbnail' height={400} width={500} 
+            className='aspect-video w-full'/>}
+          </div>
+          }
+        </div>
+
+
+
         <div className='flex gap-5 items-center p-5 border rounded-xl mt-9 backgroound-secondary'>
           <textarea placeholder='Enter youtube video title/description' className='w-full outline-0 bg-transparent'
             onChange={(event)=>setUserInput(event.target.value)}

@@ -3,6 +3,7 @@ import { inngest } from "./client";
 import OpenAI from 'openai';
 import Replicate from 'replicate';
 import moment from 'moment';
+import ImageKit from 'imagekit';
 import { db } from "@/configs/db";
 import { AiThumbnailTable } from "@/configs/schema";
 export const helloWorld = inngest.createFunction(
@@ -14,12 +15,11 @@ export const helloWorld = inngest.createFunction(
   },
 );
 
-//@ts-ignore
-const imageKit=new ImageKit({
-  publicKey:process.env.ImageKit_PUBLIC_KEY,
-  privateKey:process.env.ImageKit_PRIVATE_KEY,
-  urlEndpoint:process.env.ImageKit_URL_ENDPOINT
-})
+const imageKit = new ImageKit({
+  publicKey: process.env.ImageKit_PUBLIC_KEY!,
+  privateKey: process.env.ImageKit_PRIVATE_KEY!,
+  urlEndpoint: process.env.ImageKit_URL_ENDPOINT!,
+});
 
 
 export const openai = new OpenAI({
@@ -39,7 +39,8 @@ export const generateAiThumbnail = inngest.createFunction(
   async ({ event, step }) => {
     const { userEmail,userInput, refImage, faceImage } = await event.data;
     // now need to upload images to cloud/imagekit or s3
-    
+    // await step.sleep("wait-a-moment", "5s");
+    // return 'Success';
     const uploadImageUrls=await step.run(
       "UploadImage",
       async()=>{
@@ -63,36 +64,43 @@ export const generateAiThumbnail = inngest.createFunction(
     }
     )
 
-    // generate thumbnail using ai service
+    //generate thumbnail using ai service
     const generateThumbnailPrompt= await step.run('GenerateThumbnailPrompt', async()=>{
+       const messageContent: any[] = [
+         {
+           "type": "text",
+           "text": uploadImageUrls
+             ? `Refering to this thumbnail url write a text prompt to generate youtube thumbnail similar to the attached reference image with the following user input: ${userInput}. Only give me text prompt, No other comment text`
+             : `Depends on user input write a text prompt to generate high quality professional youtube thumbnail prompt, Make sure to Add relavent icons, illustrations or images as per title. UserInput: ${userInput}. Only give me text prompt, No other comment text`
+         }
+       ];
+
+       // Only add image_url if we have a valid URL
+       if (uploadImageUrls) {
+         messageContent.push({
+           "type": "image_url",
+           "image_url": {
+             "url": uploadImageUrls
+           }
+         });
+       }
+
        const completion = await openai.chat.completions.create({
-       model: 'google/gemini-2.5-flash',
-       messages: [
-       {
-          role: 'user',
-          content:[
-            {
-            "type": "text",
-            "text": uploadImageUrls?`Refering to this thumbnail url write a text prompt to generate 
-            youtube thumbnail similar to the attached reference image with the following user input:`+ userInput+'Only give me text prompt,No other comment text':
-            `Depends on user input write a text prompt to generate high quality professional youtube thumbnail prompt,Make sure to
-            Add relavent icons,illustrations or images as per title. UserInput:`+ userInput+'.Only give me text prompt,No other comment text'
-          },
-          {
-            "type": "image_url",
-            "image_url": {
-              "url": uploadImageUrls??``,
-            }
-          },
-          ],
-        },
-      ],
-      });
+         model: 'google/gemini-2.5-flash',
+         max_tokens: 350,
+         messages: [
+           {
+             role: 'user',
+             content: messageContent,
+           },
+         ],
+       });
 
       console.log(completion.choices[0].message.content);
       return completion.choices[0].message.content;
 
     })
+    
     
     // generate image
     const generateThumbnailImage= await step.run('Generate Image', async()=>{
@@ -108,6 +116,7 @@ export const generateAiThumbnail = inngest.createFunction(
       return output.url();
     })
 
+
     // save image to cloud storage
     const uploadThumbnail=await step.run('Upload Thumbnail',async()=>{
       const imageRef=await imageKit.upload({
@@ -118,6 +127,8 @@ export const generateAiThumbnail = inngest.createFunction(
       })
       return imageRef.url;
     })
+
+
     // save all records to database
     const SaveToDB=await step.run('SaveToDB',async()=>{
       const result=await db.insert(AiThumbnailTable).values({
@@ -132,7 +143,7 @@ export const generateAiThumbnail = inngest.createFunction(
       return result;
     })
 
-    return SaveToDB;
+    return uploadThumbnail;
   }
 
 )
