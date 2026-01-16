@@ -1,8 +1,9 @@
+import { db } from '@/configs/db';
+import { AiThumbnailTable } from '@/configs/schema';
 import { inngest } from '@/inngest/client';
 import { currentUser } from '@clerk/nextjs/server';
+import { eq, desc } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
-import { run } from 'node:test';
-import { use } from 'react';
 export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const refImage = formData.get('refImage') as File | null;
@@ -32,4 +33,14 @@ const getFileBufferData = async (file: File)=>{
         size:file.size,
         buffer:buffer.toString('base64'),
     }
+}
+
+export async function GET(request: NextRequest) {
+    const user= await currentUser();
+    const result=await db.select().from(AiThumbnailTable)
+    //@ts-ignore
+    .where(eq(AiThumbnailTable.userEmail,user?.primaryEmailAddress?.emailAddress ?? ''))
+    //@ts-ignore
+    .orderBy(desc(AiThumbnailTable.id));
+    return NextResponse.json({result});
 }

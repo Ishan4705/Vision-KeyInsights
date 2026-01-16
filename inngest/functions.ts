@@ -44,24 +44,24 @@ export const generateAiThumbnail = inngest.createFunction(
     const uploadImageUrls=await step.run(
       "UploadImage",
       async()=>{
-        if(!refImage){
-        const refImageUrl=await imageKit.upload({
-          file:refImage?.buffer??'',
-          fileName:refImage.name,
-          isPublished:true,
-          useUniqueFileName:true
-        })
-        // const faceImageUrl=await imageKit.upload({
-        //   file:faceImage?.buffer??'',
-        //   fileName:faceImage.name,
-        //   isPublished:true,
-        //   useUniqueFileName:true
-        // })
-        return refImageUrl.url;
-      } else {
-        return null;
+        if(refImage){
+          const refImageUrl=await imageKit.upload({
+            file:refImage?.buffer??'',
+            fileName:refImage.name,
+            isPublished:true,
+            useUniqueFileName:true
+          })
+          // const faceImageUrl=await imageKit.upload({
+          //   file:faceImage?.buffer??'',
+          //   fileName:faceImage.name,
+          //   isPublished:true,
+          //   useUniqueFileName:true
+          // })
+          return refImageUrl.url;
+        } else {
+          return null;
+        }
       }
-    }
     )
 
     //generate thumbnail using ai service

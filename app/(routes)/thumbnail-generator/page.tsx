@@ -5,6 +5,7 @@ import { ArrowUp, Divide, ImagePlus, Loader2, User, X } from 'lucide-react'
 import Image from 'next/image'
 import { resolve } from 'path';
 import React, { useState } from 'react'
+import ThumbnailList from './_components/ThumbnailList';
 
 function ThumbnailGenerator() {
   const[userInput,setUserInput]=useState<string>();
@@ -128,6 +129,7 @@ function ThumbnailGenerator() {
           />
         </div>
         </div>
+        <ThumbnailList />
     </div>
   )
 }
