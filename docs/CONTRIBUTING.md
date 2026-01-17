@@ -227,12 +227,6 @@ Fixes #123
 - [ ] No console errors
 - [ ] Responsive on mobile
 
-## Screenshots (if applicable)
-[Add screenshots]
-
-## Additional Notes
-Any additional context
-```
 
 ### 6. Code Review
 
@@ -337,23 +331,9 @@ Before submitting PR, ensure:
 - [ ] Commit messages follow convention
 - [ ] Branch is up to date with main
 
-## 🙏 Code of Conduct
 
-### Our Standards
 
-- Be respectful and inclusive
-- Welcome diverse perspectives
-- Accept constructive criticism gracefully
-- Focus on what's best for the community
-- Show empathy towards others
 
-### Unacceptable Behavior
-
-- Harassment or discriminatory language
-- Trolling or insulting comments
-- Public or private harassment
-- Publishing others' private information
-- Other unprofessional conduct
 
 ## 📞 Getting Help
 
@@ -361,14 +341,7 @@ Before submitting PR, ensure:
 - 📧 Create an issue with the `question` label
 - 📖 Check the [documentation](./README.md)
 
-## 🎉 Recognition
 
-Team contributions are:
-- Documented in release notes
-- Tracked in commit history
-- Recognized in team reviews
-
-Thank you for your dedication to Vision KeyInsights! 🚀
 
 ---
 
