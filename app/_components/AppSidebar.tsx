@@ -23,12 +23,12 @@ const items = [
     },
     {
         title: "Thumbnail Generator",
-        url: "#",
+        url: "/thumbnail-generator",
         icon: ImageIcon,
     },
     {
         title: "Thumbnail Search",
-        url: "#",
+        url: "/thumbnail-search",
         icon: GalleryThumbnails,
     },
     {

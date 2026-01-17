@@ -13,7 +13,7 @@ const Features=[
     id:2,
     title:"Search Thumbnail",
     image:"/feature2.png",
-    path:"/search-thumbnail",
+    path:"/thumbnail-search",
   },
   {
     id:3,
