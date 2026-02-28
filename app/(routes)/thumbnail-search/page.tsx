@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import axios from 'axios';
 import { Loader2, Search } from 'lucide-react'
 import React, { useState } from 'react'
@@ -69,9 +70,24 @@ function ThumbnailSearch() {
         </div>
       )}
 
-      {videos.length > 0 && (
+      {(loading || videos.length > 0) && (
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {videos.map((video: any) => (
+          {loading ? [1, 2, 3, 4, 5, 6].map((item, index) => (
+            <div key={index} className="border rounded-lg overflow-hidden shadow-lg bg-white">
+              <Skeleton className="w-full h-48" />
+              <div className="p-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-6 w-4/5" />
+                  <Skeleton className="h-4 w-3/5" />
+                  <div className="flex justify-between pt-2">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )) : videos.map((video: any) => (
             <div key={video.id} className="border rounded-lg overflow-hidden shadow-lg bg-white">
               <img src={video.thumbnail} alt={video.title} className="w-full h-48 object-cover" />
               <div className="p-4">

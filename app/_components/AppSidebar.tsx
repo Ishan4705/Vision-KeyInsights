@@ -43,7 +43,7 @@ const items = [
     },
     {
         title: "Outlier",
-        url: "#",
+        url: "/outlier",
         icon: Gauge,
     },
     {
@@ -93,7 +93,7 @@ export function AppSidebar() {
             </SidebarContent>
             <SidebarFooter>
                 <div className='p-4 text-sm text-gray-500'>
-                    <p>© 2025 Vision KeyInsights</p>
+                    <p>© 2026 Vision KeyInsights</p>
                     <p>All rights reserved.</p>
                 </div>  
             </SidebarFooter>
