@@ -32,6 +32,16 @@ const items = [
         icon: GalleryThumbnails,
     },
     {
+        title: "Outlier",
+        url: "/outlier",
+        icon: Gauge,
+    },
+    {
+        title: "Content Generator",
+        url: "#",
+        icon: Lightbulb,
+    },
+    {
         title: "Keywords",
         url: "#",
         icon: BookType,
@@ -42,16 +52,6 @@ const items = [
         icon: ChartNoAxesColumn,
     },
     {
-        title: "Outlier",
-        url: "/outlier",
-        icon: Gauge,
-    },
-    {
-        title: "Content Generator",
-        url: "#",
-        icon: Lightbulb,
-    },
-      {
         title: "Subscription",
         url: "#",
         icon: Settings,
