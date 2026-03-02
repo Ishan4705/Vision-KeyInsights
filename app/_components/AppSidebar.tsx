@@ -38,12 +38,12 @@ const items = [
     },
     {
         title: "Content Generator",
-        url: "#",
+        url: "/content-generator",
         icon: Lightbulb,
     },
     {
         title: "Keywords",
-        url: "#",
+        url: "/keywords",
         icon: BookType,
     },
     {

@@ -1,4 +1,4 @@
-import { integer, pgTable, varchar } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, json } from "drizzle-orm/pg-core";
 export const usersTable = pgTable("users", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     name: varchar({ length: 255 }).notNull(),
@@ -13,4 +13,13 @@ export const AiThumbnailTable = pgTable('thumbnails',{
     refImage: varchar(),
     userEmail:varchar().references(()=>usersTable.email),
     createdOn: varchar(),
+})
+
+export const AiContentTable = pgTable('AiContent',{
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userInput: varchar(),
+    content: json(),
+    thumbnailUrl: varchar(),
+    userEmail:varchar().references(()=>usersTable.email),
+    createdOn: varchar()
 })
