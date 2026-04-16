@@ -43,7 +43,7 @@ const items = [
     },
     {
         title: "Keywords",
-        url: "/keywords",
+        url: "/trending-keywords",
         icon: BookType,
     },
     {
@@ -95,7 +95,7 @@ export function AppSidebar() {
                 <div className='p-4 text-sm text-gray-500'>
                     <p>© 2026 Vision KeyInsights</p>
                     <p>All rights reserved.</p>
-                </div>  
+                </div>
             </SidebarFooter>
         </Sidebar>
     )
