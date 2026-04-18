@@ -6,20 +6,28 @@ export const usersTable = pgTable("users", {
 
 });
 
-export const AiThumbnailTable = pgTable('thumbnails',{
+export const AiThumbnailTable = pgTable('thumbnails', {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     userInput: varchar(),
     thumbnailUrl: varchar(),
     refImage: varchar(),
-    userEmail:varchar().references(()=>usersTable.email),
+    userEmail: varchar().references(() => usersTable.email),
     createdOn: varchar(),
 })
 
-export const AiContentTable = pgTable('AiContent',{
+export const AiContentTable = pgTable('AiContent', {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     userInput: varchar(),
     content: json(),
     thumbnailUrl: varchar(),
-    userEmail:varchar().references(()=>usersTable.email),
+    userEmail: varchar().references(() => usersTable.email),
+    createdOn: varchar()
+})
+
+export const TrendingKeywordsTable = pgTable('TrendingKeywords', {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userInput: varchar(),
+    keywords: json(),
+    userEmail: varchar().references(() => usersTable.email),
     createdOn: varchar()
 })

@@ -4,7 +4,7 @@ import Replicate from 'replicate';
 import moment from 'moment';
 import ImageKit from 'imagekit';
 import { db } from "@/configs/db";
-import { AiThumbnailTable, AiContentTable } from "@/configs/schema";
+import { AiThumbnailTable, AiContentTable, TrendingKeywordsTable } from "@/configs/schema";
 import axios from "axios";
 export const helloWorld = inngest.createFunction(
   { id: "hello-world" },
@@ -379,14 +379,15 @@ export const getTrendingKeywords = inngest.createFunction(
   { id: 'ai/get-trending-keywords' },
   { event: 'ai/get-trending-keywords' },
   async ({ event, step }) => {
-    const { userEmail, userInput } = await event.data;
+    const { userEmail, userInput } = event.data;
 
     //Step 1 get Google Search result with help of Bright data
     const googleSearchResult = await step.run('getGoogleSearchResult', async () => {
       try {
+        const encodedQuery = encodeURIComponent(userInput);
         const res = await axios.post('https://api.brightdata.com/request', {
           zone: 'visionkeyinsights',
-          url: `https://www.google.com/search?q=${userInput}&brd_json=1`,
+          url: `https://www.google.com/search?q=${encodedQuery}&tbm=vid&brd_json=1`,
           format: 'json'
         }, {
           headers: {
@@ -394,9 +395,16 @@ export const getTrendingKeywords = inngest.createFunction(
             'Content-Type': 'application/json'
           }
         })
-        const data = res.data; // return JSON String
-        const nestedData = JSON.parse(res.data) // parsing the string to proper JSON
-        return nestedData;
+        const data = res.data;
+        // Handle both string and already-parsed JSON responses
+        const nestedJson = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
+        let titles: string[] = [];
+        if (nestedJson?.organic && Array.isArray(nestedJson.organic)) {
+          nestedJson.organic.forEach((item: any) => {
+            if (item?.title) titles.push(item.title);
+          })
+        }
+        return titles;
 
       } catch (error) {
         console.error('Error in Step 1 - Get Google Search Result:', error);
@@ -405,10 +413,115 @@ export const getTrendingKeywords = inngest.createFunction(
     })
 
     //Step 2 get Youtube search result using API
+    const YoutubeResult = await step.run('Youtube Result', async () => {
+      try {
+        const encodedQuery = encodeURIComponent(userInput);
+        const result = await axios.get(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodedQuery}&type=video&key=${process.env.YOUTUBE_API_KEY}`)
+        const data = result.data;
+        let titles: string[] = [];
+        if (data?.items && Array.isArray(data.items)) {
+          data.items.forEach((item: any) => {
+            if (item?.snippet?.title) titles.push(item.snippet.title);
+          })
+        }
+        return titles;
+      } catch (error) {
+        console.error('Error in Step 2 - Get YouTube Search Result:', error);
+        throw new Error(`YouTube search result failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    })
 
     // Step 3 to pass both result to LLM and get trending keywords
+    const KeywordsList = await step.run('generatekeywords', async () => {
+      const allTitles = googleSearchResult.concat(YoutubeResult).join('\n');
+      const sysPrompt = `You are an expert YouTube SEO specialist. Given the user input and a list of video titles from Google and YouTube search results, extract high-ranking SEO-relevant keywords.
+
+User Input: ${userInput}
+
+Video Titles:
+${allTitles}
+
+For each keyword:
+- Assign an SEO score (1-100) based on search potential and relevance
+- Include a few related queries or search phrases based on user intent
+
+Return the result in this exact JSON format (no markdown, no explanation, only valid JSON):
+{
+  "main_keyword": "Main Topic Keyword",
+  "keywords": [
+    {
+      "keyword": "Extracted Keyword",
+      "score": 85,
+      "related_queries": ["related query 1", "related query 2"]
+    }
+  ]
+}
+
+IMPORTANT: Return ONLY valid JSON. No trailing commas. No comments. No markdown. No explanation before or after the JSON. Keep keywords concise, focused, and action-oriented.`
+
+      const completion = await openai.chat.completions.create({
+        model: 'google/gemini-2.5-flash',
+        max_tokens: 1500,
+        temperature: 0.7,
+        messages: [
+          {
+            role: 'user',
+            content: sysPrompt,
+          },
+        ],
+      });
+
+      const rawJson = completion.choices[0]?.message?.content;
+      console.log('AI keywords generated successfully');
+
+      if (!rawJson) {
+        throw new Error('No content received from AI');
+      }
+
+      // Clean up the JSON response
+      let cleanedJson = rawJson.trim();
+      cleanedJson = cleanedJson.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+
+      const jsonStart = cleanedJson.indexOf('{');
+      const jsonEnd = cleanedJson.lastIndexOf('}');
+
+      if (jsonStart === -1 || jsonEnd === -1) {
+        throw new Error('No valid JSON found in AI response');
+      }
+
+      cleanedJson = cleanedJson.substring(jsonStart, jsonEnd + 1);
+
+      // Remove trailing commas before } or ] (common LLM JSON issue)
+      cleanedJson = cleanedJson.replace(/,\s*([\]}])/g, '$1');
+      // Remove any control characters that might break parsing
+      cleanedJson = cleanedJson.replace(/[\x00-\x1F\x7F]/g, (ch) => ch === '\n' || ch === '\r' || ch === '\t' ? ch : '');
+
+      const parsedJson = JSON.parse(cleanedJson);
+
+      // Validate required fields for keywords response
+      if (!parsedJson.keywords || !Array.isArray(parsedJson.keywords)) {
+        throw new Error('Invalid JSON structure: missing "keywords" array');
+      }
+
+      return parsedJson;
+    })
 
     // Step 4 to save trending keywords to database
-    return googleSearchResult;
+    const SaveToDB = await step.run('SaveToDB', async () => {
+      try {
+        const result = await db.insert(TrendingKeywordsTable).values({
+          userEmail: String(userEmail),
+          userInput: String(userInput),
+          keywords: KeywordsList,
+          createdOn: moment().format('yyyy-MM-DD'),
+        }).returning();
+        return result;
+      } catch (error) {
+        console.error('Error in Step 4 - Save to DB:', error);
+        throw new Error(`Database save failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    })
+
+    return SaveToDB;
   }
 )
