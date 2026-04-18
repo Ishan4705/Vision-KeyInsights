@@ -6,19 +6,30 @@ Common questions and answers about Vision KeyInsights.
 
 ### What is Vision KeyInsights?
 
-Vision KeyInsights is an AI-powered tool that helps content creators generate professional YouTube thumbnails in seconds using advanced AI models.
+Vision KeyInsights is an AI-powered YouTube toolkit that helps content creators with:
+- **Thumbnail Generation** — AI-generated professional thumbnails
+- **Content Generation** — SEO-optimized titles, descriptions, tags, and thumbnail prompts
+- **Trending Keywords** — SEO keyword discovery from Google & YouTube data
+- **Thumbnail Search** — YouTube thumbnail discovery with engagement metrics
+- **Outlier Detection** — Statistical analysis to find viral video patterns
 
 ### Is it free to use?
 
-This is a private development project. You'll need API keys from third-party services (Replicate, OpenRouter) which have their own pricing:
-- Replicate: ~$0.003-0.01 per thumbnail
-- OpenRouter: Pay-per-token pricing
-- ImageKit: Free tier available
+This is a private development project. You'll need API keys from third-party services, each with their own pricing:
+
+| Service | Free Tier | Paid Cost |
+|---------|-----------|-----------|
+| Replicate | Need $5+ credit | ~$0.003–0.01/image |
+| OpenRouter | Pay per token | Varies by model |
+| YouTube API | 10,000 units/day | Additional quota available |
+| ImageKit | 20GB bandwidth/month | $49+/month |
+| Bright Data | Trial available | Pay per request |
+| Inngest | Generous free tier | Pay as you grow |
 
 ### What AI models are used?
 
 - **Text Generation:** Google Gemini 2.5 Flash (via OpenRouter)
-- **Image Generation:** Google Imagen-4 (via Replicate)
+- **Image Generation:** Google Imagen-4 Fast (via Replicate)
 
 ### Can I use this commercially?
 
@@ -30,7 +41,7 @@ This is a private project. Commercial usage is subject to project ownership and 
 
 ### How long does it take to generate a thumbnail?
 
-Typically 15-30 seconds, depending on:
+Typically 15–30 seconds, depending on:
 - Replicate API queue
 - Complexity of prompt
 - Whether reference image is used
@@ -39,7 +50,7 @@ Typically 15-30 seconds, depending on:
 
 - **Aspect Ratio:** 16:9 (YouTube standard)
 - **Format:** PNG
-- **Resolution:** High quality (typically 1920x1080)
+- **Resolution:** High quality (typically 1920×1080)
 
 ### Can I customize the aspect ratio?
 
@@ -53,31 +64,98 @@ Common causes:
 - **Invalid prompt:** Try simpler, clearer descriptions
 - **File size:** Reference image too large (> 10MB)
 
-### Can I generate multiple thumbnails at once?
+---
 
-Batch generation is not currently supported but is on the [roadmap](../ROADMAP.md).
+## 📝 Content Generation
+
+### What does the content generator produce?
+
+The AI content generator creates:
+1. **3 Video Titles** with SEO scores (1–100)
+2. **Video Description** optimized for the topic
+3. **10 Tags** with high search volume
+4. **2 Thumbnail Prompts** (different visual styles)
+5. **2 AI-Generated Thumbnails** from those prompts
+
+### How long does content generation take?
+
+30–90 seconds. The workflow generates text content, then creates 2 thumbnail images (with 12-second delays between requests to avoid rate limiting).
+
+### Why does it take longer than thumbnail generation?
+
+Content generation includes multiple steps:
+- AI text generation (titles, description, tags, prompts)
+- 2 image generation requests (with 12s delay between each)
+- Image upload to ImageKit
+- Database save
 
 ---
 
-## 📸 Reference Images
+## 🔍 Trending Keywords
 
-### What image formats are supported?
+### How does keyword analysis work?
 
-- JPG/JPEG
-- PNG
-- WebP
+The system combines two data sources:
+1. **Google Search** — Video tab results scraped via Bright Data
+2. **YouTube Data API** — Video title search results
 
-### What's the maximum file size?
+These titles are then analyzed by Gemini 2.5 Flash to extract SEO-relevant keywords with scores.
 
-10MB maximum, but we recommend < 5MB for faster processing.
+### What do the keyword scores mean?
 
-### Does the reference image need to be a thumbnail?
+Scores range from 1–100 and represent estimated SEO potential:
+- **80–100** (Amber) — High ranking potential, very competitive
+- **60–79** (Yellow) — Good potential, moderate competition
+- **Below 60** (Orange) — Lower potential, niche keywords
 
-No, but using actual thumbnails gives better results. The AI uses it to understand style, layout, and composition.
+### What are related queries?
 
-### Can I use copyrighted images as references?
+Each keyword includes related search phrases that users commonly search for. These are useful for expanding your tag list and content strategy.
 
-The reference guides the AI's generation; it doesn't copy the image. However, respect copyright laws and use images you have rights to.
+### Why did my keyword search fail?
+
+- **Bright Data API error:** Check your API key and zone configuration
+- **YouTube API quota:** You may have exceeded the 10,000 units/day limit
+- **OpenRouter credits:** Ensure you have sufficient credits for AI processing
+
+---
+
+## 🔎 Thumbnail Search
+
+### How does thumbnail search work?
+
+It searches YouTube using the Data API v3, filtering for medium-length videos (excludes Shorts). For each video, it returns the thumbnail, title, channel, view count, likes, and comments.
+
+### Why are some videos missing?
+
+The API filters `videoDuration=medium` to exclude YouTube Shorts. Only videos with standard duration are included.
+
+### Is thumbnail search public?
+
+Yes, the thumbnail search endpoint (`/api/thumbnail-search`) does not require authentication.
+
+---
+
+## 📊 Outlier Detection
+
+### What is outlier detection?
+
+It identifies videos that are performing abnormally well (or poorly) compared to others in the same search results using the **IQR (Interquartile Range)** statistical method.
+
+### What is the Smart Score?
+
+A composite score calculated as:
+```
+smartScore = (viewCount/avgViews) × 0.5
+           + (viewsPerDay/maxViewsPerDay) × 0.3
+           + (engagementRate/maxEngagementRate) × 0.2
+```
+
+Higher smart scores indicate videos that are performing exceptionally well across views, velocity, and engagement.
+
+### What is the Outlier Score?
+
+Measures how far a video's view count deviates from the expected range. Higher outlier scores mean more extreme performance.
 
 ---
 
@@ -86,8 +164,8 @@ The reference guides the AI's generation; it doesn't copy the image. However, re
 ### Why do I need to sign up?
 
 Authentication ensures:
-- Your thumbnails are private and saved to your account
-- You can access thumbnail history
+- Your content is private and saved to your account
+- You can access generation history
 - Prevents abuse and rate limiting
 
 ### What authentication methods are supported?
@@ -99,7 +177,7 @@ Authentication ensures:
 
 ### Is my data secure?
 
-Yes. Authentication is handled by Clerk (SOC 2 Type II certified). Images are stored on ImageKit's secure CDN.
+Yes. Authentication is handled by Clerk (SOC 2 Type II certified). Images are stored on ImageKit's secure CDN. All API keys are server-side only.
 
 ### Can I delete my account?
 
@@ -117,27 +195,19 @@ Currently manual. Contact via GitHub issues to request account deletion. Self-se
 |---------|-----------|------------|
 | Vercel | Yes | $20/month (Pro) |
 | Database (Neon) | Yes (0.5GB) | Pay as you grow |
-| Replicate | $5 credit needed | ~$0.003-0.01/image |
+| Replicate | $5 credit needed | ~$0.003–0.01/image |
 | OpenRouter | No free tier | Pay per token |
+| YouTube API | 10K units/day | Additional quota |
+| Bright Data | Trial credits | Pay per request |
 | ImageKit | Yes (20GB/month) | $49+/month |
 | Inngest | Yes (generous) | Pay as you grow |
 
-**Per Thumbnail Cost:** ~$0.01-0.02
-
-### Can I reduce costs?
-
-Yes:
-- Use cheaper AI models
-- Implement caching for repeated prompts
-- Batch operations
-- Optimize prompts to reduce token usage
-
-### Is there a usage limit?
-
-Limits depend on your API provider plans:
-- Replicate free tier: 6 requests/minute
-- Add $5+ credit for higher limits
-- Monitor usage via provider dashboards
+**Estimated per-feature cost:**
+- Thumbnail generation: ~$0.01–0.02
+- Content generation: ~$0.03–0.05 (includes 2 thumbnails)
+- Keyword analysis: ~$0.005 (AI text only)
+- Thumbnail search: Free (YouTube API units)
+- Outlier detection: Free (YouTube API units)
 
 ---
 
@@ -151,6 +221,22 @@ Limits depend on your API provider plans:
 3. Wait a minute if rate limited
 4. Check Replicate status page
 5. Verify Inngest is configured correctly
+
+### "Workflow failed" during content generation
+
+**Solutions:**
+1. Check Replicate and OpenRouter API keys
+2. Ensure sufficient credits on both services
+3. Check Inngest dashboard for detailed error logs
+4. Rate limiting: the system waits 12s between image requests automatically
+
+### Keywords not loading
+
+**Solutions:**
+1. Check Bright Data API key and zone (`visionkeyinsights`)
+2. Verify YouTube API key and quota
+3. Check OpenRouter credits
+4. Review Inngest dashboard for step failures
 
 ### Images not loading in gallery
 
@@ -174,10 +260,10 @@ npm run build
 ### Database connection issues
 
 **Check:**
-1. DATABASE_URL is correct
-2. Database is accessible (IP allowlist if needed)
+1. `NEXT_PUBLIC_NEON_DB_CONNECTION_STRING` is correct
+2. Database is accessible (check Neon dashboard)
 3. SSL mode is set correctly
-4. Connection pooling enabled
+4. All 4 tables exist (run `npx drizzle-kit push`)
 
 ### Environment variables not working
 
@@ -185,8 +271,9 @@ npm run build
 1. Restart development server
 2. Verify exact variable names (case-sensitive)
 3. Check `.env.local` is in root directory
-4. Don't wrap values in quotes unless needed
-5. Redeploy if on Vercel after adding variables
+4. Client-side variables must use `NEXT_PUBLIC_` prefix
+5. Don't wrap values in quotes unless needed
+6. Redeploy if on Vercel after adding variables
 
 ---
 
@@ -194,16 +281,13 @@ npm run build
 
 ### Can I add my face to thumbnails?
 
-This feature is planned! See the [roadmap](../ROADMAP.md) for details. Currently exploring:
-- Face swap technology
-- Face-conditioned generation models
+This feature is planned! See the [roadmap](../ROADMAP.md) for details.
 
 ### Can I edit thumbnails after generation?
 
 Currently, no built-in editor. You can:
 - Download and edit in external tools
 - Generate again with modified prompt
-- Future: Built-in editor is being considered
 
 ### Can I download thumbnails?
 
@@ -211,9 +295,9 @@ Yes:
 1. Click thumbnail to open full-size
 2. Right-click → "Save Image As"
 
-### Can I share my thumbnails?
+### Can I generate multiple thumbnails at once?
 
-Currently, thumbnails are private. Public sharing and gallery features are planned.
+The Content Generator creates 2 thumbnails per request. Standalone batch generation is planned.
 
 ### Can I see analytics for my thumbnails?
 
@@ -228,22 +312,19 @@ Not yet. A/B testing and performance analytics are on the [roadmap](../ROADMAP.m
 ```bash
 git pull origin main
 npm install
-npm run build
+npx drizzle-kit push
+npm run dev
 ```
 
 ### Are updates automatic on Vercel?
 
 Yes, Vercel automatically deploys when you push to main branch.
 
-### How do I check which version I'm running?
-
-Check `package.json` version or git commit hash.
-
 ### Will updates break my existing setup?
 
 We aim for backward compatibility. Breaking changes will be:
 - Clearly documented
-- Include migration guides
+- Include migration guides (especially for database schema changes)
 - Announced in release notes
 
 ---
@@ -268,13 +349,6 @@ See the [Development Guidelines](./CONTRIBUTING.md) for standards and best pract
 3. Document use case and benefits
 4. Get approval before implementation
 
-### How do I submit changes?
-
-1. Read the [Development Guidelines](./CONTRIBUTING.md)
-2. Create a feature/fix branch
-3. Follow code standards
-4. Submit PR for review
-
 ---
 
 ## 📚 Learning Resources
@@ -287,18 +361,20 @@ See the [Development Guidelines](./CONTRIBUTING.md) for standards and best pract
 
 ### How can I learn more about the tech stack?
 
-Check out:
 - [Getting Started Guide](./GETTING_STARTED.md)
 - [Architecture Overview](./ARCHITECTURE.md)
 - [API Reference](./API_REFERENCE.md)
+- [Inngest Documentation](https://www.inngest.com/docs)
+- [Drizzle ORM Documentation](https://orm.drizzle.team/)
 
 ### Where can I see code examples?
 
 Browse the codebase:
 - Components: `app/_components/`
 - API routes: `app/api/`
-- Database: `configs/`
-- Background jobs: `inngest/`
+- Database: `configs/schema.ts`
+- Background jobs: `inngest/functions.ts`
+- Services: `services/GlobalApi.tsx`
 
 ---
 
@@ -309,11 +385,7 @@ Browse the codebase:
 1. Check this FAQ
 2. Read the [documentation](./README.md)
 3. Contact the development team
-4. Review existing documentation
-
-### Is there a team chat?
-
-Coordinate with the team through your preferred internal communication channels.
+4. Review the Inngest dashboard for job errors
 
 ### How do I report security issues?
 
@@ -327,14 +399,15 @@ Report security concerns immediately to the project lead or development team.
 
 See the [ROADMAP.md](../ROADMAP.md) for:
 - Face integration
-- Thumbnail search
 - A/B testing
 - Performance analytics
+- Style presets
+- Batch generation
 - And more!
 
 ### How are features prioritized?
 
-Feature prioritization is determined by the development team based on project goals and requirements.
+Feature prioritization is determined by the development team based on project goals, user demand, and technical feasibility.
 
 ### How can I stay updated?
 
@@ -344,5 +417,5 @@ Feature prioritization is determined by the development team based on project go
 
 ---
 
-**Last Updated:** January 17, 2026  
+**Last Updated:** April 18, 2026  
 **Can't find your question?** Contact the development team

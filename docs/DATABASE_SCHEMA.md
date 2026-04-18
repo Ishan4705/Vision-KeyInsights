@@ -4,41 +4,41 @@ Complete database schema documentation for Vision KeyInsights.
 
 ## Overview
 
-**Database:** PostgreSQL  
+**Database:** PostgreSQL (Neon serverless)  
 **ORM:** Drizzle ORM  
-**Migrations:** Drizzle Kit
+**Migrations:** Drizzle Kit  
+**Schema Location:** `configs/schema.ts`
 
 ## Schema Diagram
 
 ```
-┌─────────────┐
-│   users     │
-├─────────────┤
-│ id (PK)     │───┐
-│ name        │   │
-│ email (UQ)  │   │
-└─────────────┘   │
-                  │
-                  │ Foreign Key
-                  │
-                  │
-┌─────────────────▼──┐
-│   thumbnails      │
-├───────────────────┤
-│ id (PK)           │
-│ userInput         │
-│ thumbnailUrl      │
-│ refImage          │
-│ userEmail (FK)    │
-│ createdOn         │
-└───────────────────┘
+┌─────────────────┐
+│     users        │
+├─────────────────┤
+│ id (PK)          │───┐
+│ name             │   │
+│ email (UQ)       │   │
+└─────────────────┘   │
+                      │ Foreign Key (email)
+      ┌───────────────┼──────────────────┐
+      │               │                  │
+┌─────▼────────┐  ┌───▼──────────┐  ┌───▼────────────────┐
+│  thumbnails   │  │  AiContent   │  │  TrendingKeywords   │
+├──────────────┤  ├──────────────┤  ├─────────────────────┤
+│ id (PK)       │  │ id (PK)      │  │ id (PK)             │
+│ userInput     │  │ userInput    │  │ userInput           │
+│ thumbnailUrl  │  │ content (J)  │  │ keywords (JSON)     │
+│ refImage      │  │ thumbnailUrl │  │ userEmail (FK)      │
+│ userEmail(FK) │  │ userEmail(FK)│  │ createdOn           │
+│ createdOn     │  │ createdOn    │  └─────────────────────┘
+└──────────────┘  └──────────────┘
 ```
 
 ## Tables
 
 ### users
 
-Stores user account information.
+Stores user account information synced from Clerk authentication.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -53,14 +53,14 @@ Stores user account information.
 **Notes:**
 - User authentication handled by Clerk
 - Email synced from Clerk on first sign-in
-- Used for associating thumbnails with users
+- Used as foreign key in all content tables
 
 **Example Row:**
-```sql
+```json
 {
-  id: 1,
-  name: "John Doe",
-  email: "john@example.com"
+  "id": 1,
+  "name": "John Doe",
+  "email": "john@example.com"
 }
 ```
 
@@ -68,38 +68,111 @@ Stores user account information.
 
 ### thumbnails (AiThumbnailTable)
 
-Stores generated thumbnail metadata.
+Stores generated AI thumbnail metadata.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | integer | PRIMARY KEY, AUTO INCREMENT | Unique thumbnail identifier |
 | `userInput` | varchar | NULLABLE | Original user prompt/description |
-| `thumbnailUrl` | varchar | NULLABLE | URL of generated thumbnail (ImageKit) |
-| `refImage` | varchar | NULLABLE | URL of reference image if used (ImageKit) |
+| `thumbnailUrl` | varchar | NULLABLE | URL of generated thumbnail (ImageKit CDN) |
+| `refImage` | varchar | NULLABLE | URL of reference image if used (ImageKit CDN) |
 | `userEmail` | varchar | FOREIGN KEY → users.email | Owner of the thumbnail |
 | `createdOn` | varchar | NULLABLE | Creation date (YYYY-MM-DD format) |
-
-**Indexes:**
-- PRIMARY KEY on `id`
-- INDEX on `userEmail` for faster queries
 
 **Foreign Keys:**
 - `userEmail` REFERENCES `users(email)`
 
-**Notes:**
-- All varchar fields have no explicit length limit (PostgreSQL text type)
-- URLs point to ImageKit CDN
-- `createdOn` stored as string for simplicity (consider DATE type for production)
+---
+
+### AiContent (AiContentTable)
+
+Stores AI-generated content including titles, descriptions, tags, and thumbnail prompts.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | integer | PRIMARY KEY, AUTO INCREMENT | Unique content identifier |
+| `userInput` | varchar | NULLABLE | Original user topic/input |
+| `content` | json | NULLABLE | Full AI-generated content (titles, description, tags, thumbnailPrompts) |
+| `thumbnailUrl` | varchar | NULLABLE | URL of first generated thumbnail (ImageKit CDN) |
+| `userEmail` | varchar | FOREIGN KEY → users.email | Owner of the content |
+| `createdOn` | varchar | NULLABLE | Creation date (YYYY-MM-DD format) |
+
+**Foreign Keys:**
+- `userEmail` REFERENCES `users(email)`
+
+**JSON Structure (content field):**
+```json
+{
+  "titles": [
+    { "title": "Generated Title 1", "seoScore": 85 },
+    { "title": "Generated Title 2", "seoScore": 78 },
+    { "title": "Generated Title 3", "seoScore": 92 }
+  ],
+  "description": "Generated compelling video description...",
+  "tags": ["tag1", "tag2", "tag3", "..."],
+  "thumbnailPrompts": [
+    { "heading": "Prompt 1", "prompt": "A professional YouTube thumbnail..." },
+    { "heading": "Prompt 2", "prompt": "A flat vector-style thumbnail..." }
+  ]
+}
+```
 
 **Example Row:**
-```sql
+```json
 {
-  id: 42,
-  userInput: "React Tutorial: Build App in 1 Hour",
-  thumbnailUrl: "https://ik.imagekit.io/abc/thumbnail_1234.png",
-  refImage: "https://ik.imagekit.io/abc/reference_5678.jpg",
-  userEmail: "john@example.com",
-  createdOn: "2026-01-17"
+  "id": 10,
+  "userInput": "React Tutorial for Beginners",
+  "content": { "titles": [...], "description": "...", "tags": [...], "thumbnailPrompts": [...] },
+  "thumbnailUrl": "https://ik.imagekit.io/abc/thumbnail_react_1234.png",
+  "userEmail": "john@example.com",
+  "createdOn": "2026-04-18"
+}
+```
+
+---
+
+### TrendingKeywords (TrendingKeywordsTable)
+
+Stores AI-analyzed SEO keyword results from Google and YouTube searches.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | integer | PRIMARY KEY, AUTO INCREMENT | Unique record identifier |
+| `userInput` | varchar | NULLABLE | Original search query |
+| `keywords` | json | NULLABLE | Full keyword analysis results |
+| `userEmail` | varchar | FOREIGN KEY → users.email | Owner of the keyword results |
+| `createdOn` | varchar | NULLABLE | Creation date (YYYY-MM-DD format) |
+
+**Foreign Keys:**
+- `userEmail` REFERENCES `users(email)`
+
+**JSON Structure (keywords field):**
+```json
+{
+  "main_keyword": "Next.js AI Projects",
+  "keywords": [
+    {
+      "keyword": "nextjs ai tutorial",
+      "score": 88,
+      "related_queries": ["nextjs openai integration", "build ai app nextjs"]
+    },
+    {
+      "keyword": "ai projects for beginners",
+      "score": 75,
+      "related_queries": ["easy ai projects", "ai project ideas 2026"]
+    }
+  ]
+}
+```
+
+**Example Row:**
+```json
+{
+  "id": 5,
+  "userInput": "Next.js AI Projects",
+  "keywords": { "main_keyword": "...", "keywords": [...] },
+  "userEmail": "john@example.com",
+  "createdOn": "2026-04-18"
 }
 ```
 
@@ -108,20 +181,16 @@ Stores generated thumbnail metadata.
 ## Relationships
 
 ### One-to-Many: users → thumbnails
-
 - One user can have many thumbnails
-- Each thumbnail belongs to exactly one user
 - Foreign key: `thumbnails.userEmail` → `users.email`
 
-**Query Example:**
-```typescript
-// Get all thumbnails for a user
-const userThumbnails = await db
-  .select()
-  .from(AiThumbnailTable)
-  .where(eq(AiThumbnailTable.userEmail, 'john@example.com'))
-  .orderBy(desc(AiThumbnailTable.id));
-```
+### One-to-Many: users → AiContent
+- One user can have many content generations
+- Foreign key: `AiContent.userEmail` → `users.email`
+
+### One-to-Many: users → TrendingKeywords
+- One user can have many keyword analysis results
+- Foreign key: `TrendingKeywords.userEmail` → `users.email`
 
 ---
 
@@ -130,7 +199,7 @@ const userThumbnails = await db
 **Location:** `configs/schema.ts`
 
 ```typescript
-import { integer, pgTable, varchar } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, json } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -146,6 +215,23 @@ export const AiThumbnailTable = pgTable('thumbnails', {
     userEmail: varchar().references(() => usersTable.email),
     createdOn: varchar(),
 });
+
+export const AiContentTable = pgTable('AiContent', {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userInput: varchar(),
+    content: json(),
+    thumbnailUrl: varchar(),
+    userEmail: varchar().references(() => usersTable.email),
+    createdOn: varchar()
+});
+
+export const TrendingKeywordsTable = pgTable('TrendingKeywords', {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userInput: varchar(),
+    keywords: json(),
+    userEmail: varchar().references(() => usersTable.email),
+    createdOn: varchar()
+});
 ```
 
 ---
@@ -160,8 +246,31 @@ const result = await db.insert(AiThumbnailTable).values({
   thumbnailUrl: "https://ik.imagekit.io/abc/thumbnail.png",
   refImage: null,
   userEmail: "john@example.com",
-  createdOn: moment().format('YYYY-MM-DD'),
-}).returning(AiThumbnailTable);
+  createdOn: moment().format('yyyy-MM-DD'),
+}).returning();
+```
+
+### Insert AI Content
+
+```typescript
+const result = await db.insert(AiContentTable).values({
+  content: generatedContent,
+  createdOn: moment().format('yyyy-MM-DD'),
+  thumbnailUrl: uploadedThumbnailUrl,
+  userEmail: "john@example.com",
+  userInput: "React Tutorial"
+}).returning();
+```
+
+### Insert Trending Keywords
+
+```typescript
+const result = await db.insert(TrendingKeywordsTable).values({
+  userEmail: "john@example.com",
+  userInput: "Next.js AI",
+  keywords: parsedKeywords,
+  createdOn: moment().format('yyyy-MM-DD'),
+}).returning();
 ```
 
 ### Get User's Thumbnails (Latest First)
@@ -192,15 +301,6 @@ await db
   .where(eq(AiThumbnailTable.id, thumbnailId));
 ```
 
-### Count User's Thumbnails
-
-```typescript
-const count = await db
-  .select({ count: sql`count(*)` })
-  .from(AiThumbnailTable)
-  .where(eq(AiThumbnailTable.userEmail, userEmail));
-```
-
 ---
 
 ## Migrations
@@ -222,7 +322,9 @@ npx drizzle-kit studio
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1 | Jan 2026 | Initial schema - users and thumbnails tables |
+| 1 | Jan 2026 | Initial schema — users and thumbnails tables |
+| 2 | Apr 2026 | Added AiContent table (JSON content storage) |
+| 3 | Apr 2026 | Added TrendingKeywords table (keyword analysis) |
 
 ---
 
@@ -231,23 +333,22 @@ npx drizzle-kit studio
 ### Constraints
 
 - **Primary Keys:** Auto-incrementing integers ensure unique records
-- **Foreign Keys:** Enforce referential integrity between users and thumbnails
+- **Foreign Keys:** Enforce referential integrity between users and all content tables
 - **Unique Constraints:** Prevent duplicate user emails
-- **Not Null:** Ensure required fields are always populated
+- **Not Null:** Ensure required fields (name, email) are always populated
 
 ### Cascade Behavior
 
-Currently, no CASCADE delete is implemented. Considerations:
+Currently, no CASCADE delete is implemented. Considerations for future:
 
-**Future Options:**
 ```typescript
-// Option 1: Cascade delete (delete thumbnails when user deleted)
+// Option 1: Cascade delete
 userEmail: varchar().references(() => usersTable.email, { onDelete: 'cascade' })
 
-// Option 2: Set null (keep thumbnails, remove association)
+// Option 2: Set null
 userEmail: varchar().references(() => usersTable.email, { onDelete: 'set null' })
 
-// Option 3: Restrict (prevent user deletion if thumbnails exist)
+// Option 3: Restrict
 userEmail: varchar().references(() => usersTable.email, { onDelete: 'restrict' })
 ```
 
@@ -257,15 +358,18 @@ userEmail: varchar().references(() => usersTable.email, { onDelete: 'restrict' }
 
 ### Current Indexes
 
-- `users.email` - UNIQUE index (automatic)
-- `thumbnails.id` - PRIMARY KEY index (automatic)
-- `thumbnails.userEmail` - Consider adding explicit index for faster queries
+- `users.email` — UNIQUE index (automatic)
+- `thumbnails.id` — PRIMARY KEY index (automatic)
+- `AiContent.id` — PRIMARY KEY index (automatic)
+- `TrendingKeywords.id` — PRIMARY KEY index (automatic)
 
 ### Recommended Indexes
 
 ```sql
--- Add index on userEmail for faster filtering
+-- Add index on userEmail for faster filtering across all tables
 CREATE INDEX idx_thumbnails_user_email ON thumbnails(userEmail);
+CREATE INDEX idx_aicontent_user_email ON "AiContent"(userEmail);
+CREATE INDEX idx_trendingkeywords_user_email ON "TrendingKeywords"(userEmail);
 
 -- Add composite index for user queries with date sorting
 CREATE INDEX idx_thumbnails_user_date ON thumbnails(userEmail, createdOn DESC);
@@ -275,7 +379,7 @@ CREATE INDEX idx_thumbnails_user_date ON thumbnails(userEmail, createdOn DESC);
 
 - Use `.limit()` for pagination
 - Use `.where()` to filter before `.orderBy()`
-- Consider connection pooling for production
+- Neon handles connection pooling for serverless
 - Use prepared statements for repeated queries
 
 ---
@@ -287,21 +391,19 @@ See [ROADMAP.md](../ROADMAP.md) for planned features that may require schema upd
 ### Planned Additions
 
 ```typescript
-// Add faceImage column
+// Add faceImage column to thumbnails
 faceImage: varchar()
 
-// Add status tracking
+// Add status tracking to thumbnails
 status: varchar() // 'pending', 'completed', 'failed'
 
 // Add generation metadata
 model: varchar() // AI model used
 prompt: text() // Generated AI prompt
 duration: integer() // Generation time in seconds
-cost: decimal(10, 2) // API cost
 
 // Add social features
 likes: integer().default(0)
-shares: integer().default(0)
 visibility: varchar() // 'private', 'public'
 
 // Add A/B testing
@@ -327,12 +429,12 @@ pg_restore -h hostname -U username -d database_name -v backup.dump
 
 ### Cloud Provider Backups
 
-Most managed PostgreSQL services (Neon, Supabase, AWS RDS) provide:
+Neon (recommended) provides:
 - Automated daily backups
 - Point-in-time recovery
-- Multi-region replication
+- Branching for preview environments
 
 ---
 
-**Last Updated:** January 17, 2026  
-**Schema Version:** 1.0
+**Last Updated:** April 18, 2026  
+**Schema Version:** 2.0

@@ -30,7 +30,14 @@ Other platforms that support Next.js deployments.
 
 - [ ] All environment variables configured
 - [ ] Database connection string updated for production
-- [ ] API keys for production services obtained
+- [ ] All API keys for production services obtained:
+  - [ ] Clerk (production keys)
+  - [ ] ImageKit
+  - [ ] OpenRouter
+  - [ ] Replicate
+  - [ ] YouTube Data API
+  - [ ] Bright Data
+  - [ ] Inngest (production keys)
 - [ ] Build passes locally (`npm run build`)
 - [ ] TypeScript compiles without errors
 - [ ] No console errors in production build
@@ -66,10 +73,10 @@ git push origin main
 Add all environment variables in Vercel dashboard:
 
 ```env
-# Database
-DATABASE_URL=your_production_database_url
+# Database (Neon)
+NEXT_PUBLIC_NEON_DB_CONNECTION_STRING=your_production_database_url
 
-# Clerk
+# Clerk Auth
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
 CLERK_SECRET_KEY=sk_live_...
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
@@ -80,21 +87,29 @@ ImageKit_PUBLIC_KEY=public_...
 ImageKit_PRIVATE_KEY=private_...
 ImageKit_URL_ENDPOINT=https://ik.imagekit.io/your_id
 
-# OpenRouter
+# AI Services
 OPENROUTER_API_KEY=sk-or-v1-...
-
-# Replicate
 REPLICATE_API_KEY=r8_...
 
-# Inngest
+# YouTube Data API
+YOUTUBE_API_KEY=your_youtube_api_key
+
+# Bright Data
+BRIGHTDATA_API_KEY=your_brightdata_api_key
+
+# Inngest (Server-side)
 INNGEST_EVENT_KEY=prod_...
 INNGEST_SIGNING_KEY=signkey_prod_...
+
+# Inngest (Client-side polling)
+NEXT_PUBLIC_INNGEST_SERVER_URL=your_inngest_server_url
+NEXT_PUBLIC_INNGEST_SIGNING_KEY=your_inngest_signing_key
 ```
 
 ### Step 4: Deploy
 
 1. Click "Deploy"
-2. Wait for build to complete (~2-5 minutes)
+2. Wait for build to complete (~2–5 minutes)
 3. Visit your deployment URL
 4. Test core functionality
 
@@ -134,25 +149,21 @@ INNGEST_SIGNING_KEY=signkey_prod_...
 4. Copy connection string (use "Connection pooling" for serverless)
 5. Add to Vercel environment variables
 
-**Features:**
-- Postgres + additional services
-- Real-time subscriptions
-- Built-in auth (optional)
-- Storage buckets
-
-### Option 3: AWS RDS
-
-Best for enterprise deployments requiring full control.
-
 ### Run Migrations
 
 ```bash
-# Set production DATABASE_URL
-export DATABASE_URL="your_production_url"
+# Set production database URL
+export NEXT_PUBLIC_NEON_DB_CONNECTION_STRING="your_production_url"
 
-# Push schema to production
+# Push schema to production (creates all 4 tables)
 npx drizzle-kit push
 ```
+
+**Tables created:**
+- `users`
+- `thumbnails`
+- `AiContent`
+- `TrendingKeywords`
 
 ---
 
@@ -174,7 +185,11 @@ npx drizzle-kit push
 - Use production API keys (not development)
 - Rotate keys regularly
 - Monitor usage for anomalies
-- Set up billing alerts
+- Set up billing alerts for:
+  - Replicate
+  - OpenRouter
+  - YouTube API quota
+  - Bright Data credits
 
 ### 3. Clerk Configuration
 
@@ -226,13 +241,6 @@ const nextConfig = {
 2. Enable Web Analytics
 3. View real-time metrics
 
-**Metrics:**
-- Page views
-- Unique visitors
-- Top pages
-- Referrers
-- Devices
-
 ### Error Tracking (Sentry)
 
 ```bash
@@ -240,25 +248,20 @@ npm install @sentry/nextjs
 npx @sentry/wizard@latest -i nextjs
 ```
 
-Add to `sentry.client.config.ts`:
-
-```typescript
-import * as Sentry from "@sentry/nextjs";
-
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  environment: process.env.NODE_ENV,
-  tracesSampleRate: 1.0,
-});
-```
-
 ### Inngest Dashboard
 
-Monitor background jobs:
+Monitor all background jobs:
 1. Go to [inngest.com/dashboard](https://inngest.com/dashboard)
-2. View function runs
-3. Check for failures
+2. View function runs for all 3 workflows
+3. Check for failures and retry attempts
 4. Analyze performance
+
+### YouTube API Quota Monitoring
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Navigate to APIs & Services → YouTube Data API v3
+3. Monitor daily quota usage (10,000 units/day)
+4. Set up alerts for quota approaching limits
 
 ---
 
@@ -299,9 +302,6 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
-    - name: Type check
-      run: npm run type-check
-      
     - name: Lint
       run: npm run lint
       
@@ -318,45 +318,44 @@ jobs:
 - [ ] Homepage loads correctly
 - [ ] Sign in/sign up works
 - [ ] Dashboard accessible after auth
-- [ ] Thumbnail generation works
-- [ ] Images display correctly
-- [ ] Thumbnail history loads
-- [ ] Mobile responsive
+- [ ] **Thumbnail Generator:**
+  - [ ] Generation works with text prompt
+  - [ ] Generation works with reference image
+  - [ ] Gallery displays thumbnails
+- [ ] **Content Generator:**
+  - [ ] Content generation completes
+  - [ ] Titles, description, tags displayed
+  - [ ] Thumbnails generated and uploaded
+- [ ] **Trending Keywords:**
+  - [ ] Keyword search returns results
+  - [ ] Scores and related queries displayed
+  - [ ] Copy-to-clipboard works
+- [ ] **Thumbnail Search:**
+  - [ ] YouTube search returns results
+  - [ ] Thumbnails and metrics displayed
+- [ ] **Outlier Detection:**
+  - [ ] Search returns annotated results
+  - [ ] Outlier flags and smart scores calculated
+- [ ] Mobile responsive across all pages
 - [ ] No console errors
-
-### Load Testing
-
-Use tools like:
-- Apache Bench
-- Artillery
-- k6
-- JMeter
-
-```bash
-# Simple load test with Apache Bench
-ab -n 100 -c 10 https://yourdomain.com/
-```
 
 ---
 
 ## 📈 Scaling Considerations
 
 ### Database
-
 - Monitor connection count
-- Set up connection pooling (Neon/Supabase built-in)
+- Neon handles connection pooling automatically
 - Consider read replicas for high traffic
-- Implement caching (Redis)
+- Implement caching (Redis) for repeated queries
 
 ### API Rate Limits
-
-- Implement request queuing for Replicate
-- Cache AI responses when possible
-- Use webhooks instead of polling
-- Set up user rate limiting
+- Implement request queuing for Replicate (built-in 12s delay)
+- Cache YouTube API responses when possible
+- Set up user-level rate limiting
+- Monitor YouTube API quota daily
 
 ### CDN & Caching
-
 - ImageKit handles image CDN
 - Vercel Edge Network for static assets
 - Consider Redis for API response caching
@@ -365,9 +364,11 @@ ab -n 100 -c 10 https://yourdomain.com/
 
 Monitor costs for:
 - Vercel (Pro plan: $20/month for production features)
-- Database hosting
-- Replicate API usage (~$0.003-0.01 per image)
-- OpenRouter API usage
+- Database hosting (Neon free tier → paid)
+- Replicate API usage (~$0.003–0.01 per image)
+- OpenRouter API usage (pay per token)
+- YouTube API (free up to 10K units/day)
+- Bright Data (pay per request)
 - ImageKit storage & bandwidth
 
 ---
@@ -386,7 +387,7 @@ npm run build
 ### Database Connection Issues
 
 - Check connection string format
-- Verify SSL mode (sslmode=require for production)
+- Verify SSL mode (`sslmode=require` for production)
 - Ensure IP allowlisting if required
 - Test connection locally first
 
@@ -394,13 +395,14 @@ npm run build
 
 - Vercel Hobby: 10s function timeout
 - Upgrade to Pro for 60s timeout
-- Use Inngest for long-running tasks (already implemented)
+- Use Inngest for long-running tasks (already implemented for all AI workflows)
 
 ### Environment Variable Issues
 
 - Ensure all variables set in Vercel dashboard
 - Check variable names match exactly
 - Redeploy after adding new variables
+- Client-side variables must use `NEXT_PUBLIC_` prefix
 
 ---
 
@@ -414,7 +416,7 @@ npm run build
 
 ### Database
 
-1. Restore from backup
+1. Restore from Neon backup
 2. Or revert migrations:
 ```bash
 npx drizzle-kit drop
@@ -427,7 +429,7 @@ npx drizzle-kit push
 
 ```env
 # Database
-DATABASE_URL=
+NEXT_PUBLIC_NEON_DB_CONNECTION_STRING=
 
 # Clerk Auth
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
@@ -444,9 +446,19 @@ ImageKit_URL_ENDPOINT=
 OPENROUTER_API_KEY=
 REPLICATE_API_KEY=
 
-# Background Jobs
+# YouTube Data API
+YOUTUBE_API_KEY=
+
+# Bright Data
+BRIGHTDATA_API_KEY=
+
+# Background Jobs (Server)
 INNGEST_EVENT_KEY=
 INNGEST_SIGNING_KEY=
+
+# Background Jobs (Client polling)
+NEXT_PUBLIC_INNGEST_SERVER_URL=
+NEXT_PUBLIC_INNGEST_SIGNING_KEY=
 
 # Optional: Monitoring
 NEXT_PUBLIC_SENTRY_DSN=
@@ -455,5 +467,5 @@ SENTRY_AUTH_TOKEN=
 
 ---
 
-**Last Updated:** January 17, 2026  
-**Deployment Version:** 1.0
+**Last Updated:** April 18, 2026  
+**Deployment Version:** 2.0

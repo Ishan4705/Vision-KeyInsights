@@ -2,39 +2,49 @@
 
 **Private Development Project**
 
-AI-powered YouTube thumbnail generator that helps content creators design professional, eye-catching thumbnails in seconds.
+AI-powered YouTube toolkit that helps content creators generate professional thumbnails, SEO-optimized content, trending keywords, and data-driven insights — all in one platform.
 
 ## 🚀 Features
 
-- **AI Thumbnail Generation** - Create stunning YouTube thumbnails using advanced AI models
-- **Reference-Based Design** - Upload a reference image to guide the style of your thumbnail
-- **Smart Prompting** - AI-powered prompt generation for optimal results
-- **Thumbnail Gallery** - View and manage your previously generated thumbnails
-- **User Authentication** - Secure authentication with Clerk
-- **Cloud Storage** - Seamless image storage with ImageKit
+- **AI Thumbnail Generation** — Create stunning YouTube thumbnails using Google Imagen-4 with optional reference image guidance
+- **AI Content Generator** — Generate SEO-optimized titles, descriptions, tags, and thumbnail prompts from a single topic
+- **Trending Keywords** — Discover high-ranking SEO keywords by combining Google & YouTube search data with AI analysis
+- **Thumbnail Search** — Search and discover YouTube video thumbnails with engagement metrics (views, likes, comments)
+- **Outlier Detection** — Identify viral outlier videos using IQR statistical analysis and smart scoring algorithms
+- **Reference-Based Design** — Upload a reference image to guide the style of your AI-generated thumbnail
+- **Thumbnail Gallery** — View and manage your previously generated thumbnails
+- **User Authentication** — Secure authentication with Clerk (Email, Google, GitHub OAuth)
+- **Cloud Storage** — Seamless image storage and CDN delivery with ImageKit
+- **Background Processing** — Reliable async job execution with Inngest
 
 ## 🛣️ Roadmap
 
 Want to see what's coming next? Check out our [ROADMAP.md](./ROADMAP.md) for planned features including:
-- 🎭 **Face Integration** - Add your face to thumbnails for personalized branding
-- 🔍 **Thumbnail Search** - Find inspiration from successful thumbnails
-- 📊 **Performance Analytics** - Track thumbnail effectiveness
-- 🎨 **Style Presets** - Quick-start templates for common video types
+- 🎭 **Face Integration** — Add your face to thumbnails for personalized branding
+- 📊 **Performance Analytics** — Track thumbnail effectiveness with A/B testing
+- 🎨 **Style Presets** — Quick-start templates for common video types
+- 🔄 **Batch Generation** — Generate multiple thumbnails in one request
 
 ## 📚 Documentation
 
 Complete documentation is available in the `/docs` directory:
 
-- **[Getting Started](./docs/GETTING_STARTED.md)** - Installation and setup guide
-- **[Architecture](./docs/ARCHITECTURE.md)** - System design and technical overview
-- **[Features](./docs/FEATURES.md)** - Detailed feature documentation
-- **[API Reference](./docs/API_REFERENCE.md)** - API endpoints and usage
-- **[Database Schema](./docs/DATABASE_SCHEMA.md)** - Database structure
-- **[Deployment](./docs/DEPLOYMENT.md)** - Production deployment guide
-- **[Contributing](./docs/CONTRIBUTING.md)** - Guidelines for contributors
-- **[FAQ](./docs/FAQ.md)** - Frequently asked questions
+- **[Getting Started](./docs/GETTING_STARTED.md)** — Installation and setup guide
+- **[Architecture](./docs/ARCHITECTURE.md)** — System design and technical overview
+- **[Features](./docs/FEATURES.md)** — Detailed feature documentation
+- **[API Reference](./docs/API_REFERENCE.md)** — API endpoints and usage
+- **[Database Schema](./docs/DATABASE_SCHEMA.md)** — Database structure and relationships
+- **[Deployment](./docs/DEPLOYMENT.md)** — Production deployment guide
+- **[Contributing](./docs/CONTRIBUTING.md)** — Guidelines for contributors
+- **[FAQ](./docs/FAQ.md)** — Frequently asked questions
 
 ## 🏁 Quick Start
+
+### Prerequisites
+
+- **Node.js** v18.x or higher
+- **npm** (or yarn/pnpm/bun)
+- **PostgreSQL** database (or cloud provider like Neon/Supabase)
 
 ### Installation
 
@@ -50,7 +60,7 @@ npm install
 cp .env.example .env.local
 
 # Run database migrations
-npm run db:push
+npx drizzle-kit push
 
 # Start development server
 npm run dev
@@ -58,10 +68,51 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to see the application.
 
-- [Architecture Overview](./docs/ARCHITECTURE.md) - Understand the system design
-- [Features Guide](./docs/FEATURES.md) - Explore all features in detail
-- [API Reference](./docs/API_REFERENCE.md) - API documentation
-- [FAQ](./docs/FAQ.md) - Common questions answered
+### Environment Variables
+
+```env
+# Database
+DATABASE_URL=your_postgresql_connection_string
+
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+
+# ImageKit (Cloud Storage)
+ImageKit_PUBLIC_KEY=
+ImageKit_PRIVATE_KEY=
+ImageKit_URL_ENDPOINT=
+
+# AI Services
+OPENROUTER_API_KEY=
+REPLICATE_API_KEY=
+
+# YouTube Data API
+YOUTUBE_API_KEY=
+
+# Bright Data (Web Scraping for Trending Keywords)
+BRIGHTDATA_API_KEY=
+
+# Inngest (Background Jobs)
+INNGEST_EVENT_KEY=
+INNGEST_SIGNING_KEY=
+```
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Framework** | Next.js 14 (App Router) |
+| **Language** | TypeScript |
+| **Styling** | Tailwind CSS + shadcn/ui |
+| **Database** | PostgreSQL (Neon) + Drizzle ORM |
+| **Auth** | Clerk |
+| **AI Text** | Google Gemini 2.5 Flash (via OpenRouter) |
+| **AI Image** | Google Imagen-4 Fast (via Replicate) |
+| **Storage** | ImageKit CDN |
+| **Background Jobs** | Inngest |
+| **Web Scraping** | Bright Data |
+| **YouTube Data** | YouTube Data API v3 |
 
 ## 🚀 Deployment
 
@@ -76,6 +127,13 @@ vercel deploy --prod
 ```
 
 📖 **Complete deployment guide:** [Deployment Documentation](./docs/DEPLOYMENT.md)
+
+## 📖 Learn More
+
+- [Architecture Overview](./docs/ARCHITECTURE.md) — Understand the system design
+- [Features Guide](./docs/FEATURES.md) — Explore all features in detail
+- [API Reference](./docs/API_REFERENCE.md) — API documentation
+- [FAQ](./docs/FAQ.md) — Common questions answered
 
 ---
 
@@ -97,10 +155,15 @@ This project is private and proprietary. All rights reserved.
 
 ## 🙏 Acknowledgments
 
-- [Next.js](https://nextjs.org) team for the amazing framework
-- [Vercel](https://vercel.com) for hosting and deployment
-- [Clerk](https://clerk.com) for authentication
-- [Replicate](https://replicate.com) and [OpenRouter](https://openrouter.ai) for AI capabilities
+- [Next.js](https://nextjs.org) — React framework for production
+- [Vercel](https://vercel.com) — Hosting and deployment
+- [Clerk](https://clerk.com) — Authentication
+- [Replicate](https://replicate.com) — AI image generation
+- [OpenRouter](https://openrouter.ai) — AI text generation
+- [ImageKit](https://imagekit.io) — Image storage and CDN
+- [Inngest](https://www.inngest.com/) — Background job processing
+- [Bright Data](https://brightdata.com) — Web scraping infrastructure
+- [YouTube Data API](https://developers.google.com/youtube/v3) — Video analytics
 
 ---
 
@@ -113,43 +176,8 @@ This project is private and proprietary. All rights reserved.
 ---
 
 **Developed by [Ishan4705](https://github.com/Ishan4705)**
-- **AI Models:** [OpenRouter](https://openrouter.ai) & [Replicate](https://replicate.com)
-- **Image Storage:** [ImageKit](https://imagekit.io)
-- **Background Jobs:** [Inngest](https://www.inngest.com/)
 
 ---
 
-## 📖 Learn More
-
-To learn more about this project:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Last Updated:** April 18, 2026  
+**Version:** 2.0.0

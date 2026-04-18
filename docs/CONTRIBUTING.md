@@ -26,7 +26,7 @@ cd Vision-KeyInsights
 
 Follow the [Getting Started Guide](./GETTING_STARTED.md) to set up your local environment.
 
-### 4. Create a Branch
+### 3. Create a Branch
 
 ```bash
 git checkout -b feature/your-feature-name
@@ -35,12 +35,12 @@ git checkout -b fix/your-bug-fix
 ```
 
 **Branch Naming Convention:**
-- `feature/` - New features
-- `fix/` - Bug fixes
-- `docs/` - Documentation updates
-- `refactor/` - Code refactoring
-- `test/` - Test additions/updates
-- `chore/` - Maintenance tasks
+- `feature/` — New features
+- `fix/` — Bug fixes
+- `docs/` — Documentation updates
+- `refactor/` — Code refactoring
+- `test/` — Test additions/updates
+- `chore/` — Maintenance tasks
 
 ## 📝 Code Style
 
@@ -93,15 +93,63 @@ export function ThumbnailCard({ thumbnail, onDelete }: ThumbnailCardProps) {
 - Use consistent spacing scale
 - Extract repeated patterns to components
 
+### Inngest Functions
+
+- Each function should have clear step names
+- Include error handling with descriptive messages in every step
+- Use `console.log` for step progress tracking
+- Handle rate limiting (e.g., 12s delay between Replicate requests)
+
+**Example:**
+```typescript
+export const myFunction = inngest.createFunction(
+  { id: 'ai/my-function' },
+  { event: 'ai/my-function' },
+  async ({ event, step }) => {
+    const result = await step.run('StepName', async () => {
+      try {
+        // Step logic
+        console.log('Step started...');
+        return result;
+      } catch (error) {
+        console.error('Step failed:', error);
+        throw new Error(`Step failed: ${error.message}`);
+      }
+    });
+  }
+);
+```
+
+### API Routes
+
+- Validate all inputs before processing
+- Use `currentUser()` from Clerk for authentication
+- Return appropriate HTTP status codes
+- Include descriptive error messages
+
+**Example:**
+```typescript
+export async function POST(req: NextRequest) {
+    const user = await currentUser();
+    if (!user) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+    }
+    // Route logic
+}
+```
+
 ### File Organization
 
 ```
-- Components: `components/` or `app/_components/`
-- Pages: `app/(routes)/`
-- API Routes: `app/api/`
-- Utilities: `lib/`
-- Types: `types/` or inline with files
-- Tests: `__tests__/` or `*.test.ts` alongside files
+- Components:    components/ or app/_components/
+- Pages:         app/(routes)/
+- API Routes:    app/api/
+- Background:    inngest/
+- Database:      configs/
+- Services:      services/
+- Utilities:     lib/
+- Types:         inline with files
+- Hooks:         hooks/
 ```
 
 ## 🧪 Testing
@@ -109,9 +157,6 @@ export function ThumbnailCard({ thumbnail, onDelete }: ThumbnailCardProps) {
 ### Running Tests
 
 ```bash
-# Type checking
-npm run type-check
-
 # Linting
 npm run lint
 
@@ -148,23 +193,25 @@ describe('generatePrompt', () => {
 ```
 
 **Types:**
-- `feat` - New feature
-- `fix` - Bug fix
-- `docs` - Documentation changes
-- `style` - Code style changes (formatting)
-- `refactor` - Code refactoring
-- `test` - Test additions/updates
-- `chore` - Maintenance tasks
+- `feat` — New feature
+- `fix` — Bug fix
+- `docs` — Documentation changes
+- `style` — Code style changes (formatting)
+- `refactor` — Code refactoring
+- `test` — Test additions/updates
+- `chore` — Maintenance tasks
 
 **Examples:**
 ```bash
-feat(thumbnail): add batch generation support
+feat(keywords): add trending keywords analysis with Bright Data
 
-fix(auth): resolve sign-in redirect issue
+fix(auth): resolve sign-in redirect issue for protected routes
 
-docs(api): update API reference for new endpoints
+docs(api): update API reference for content generator endpoint
 
-refactor(database): optimize thumbnail queries
+refactor(inngest): add rate limit retry logic for Replicate API
+
+feat(outlier): add IQR-based outlier detection with smart scoring
 ```
 
 ### Commit Best Practices
@@ -201,9 +248,9 @@ git push origin feature/your-feature-name
 ```
 <type>: <description>
 
-feat: Add batch thumbnail generation
-fix: Resolve loading state bug in ThumbnailList
-docs: Update deployment guide
+feat: Add trending keywords analysis
+fix: Resolve loading state bug in content generator
+docs: Update API reference for new endpoints
 ```
 
 ### 5. PR Description Template
@@ -226,7 +273,9 @@ Fixes #123
 - [ ] No TypeScript errors
 - [ ] No console errors
 - [ ] Responsive on mobile
-
+- [ ] Inngest functions tested (if applicable)
+- [ ] API endpoints return correct responses
+```
 
 ### 6. Code Review
 
@@ -263,7 +312,7 @@ If applicable
 **Environment:**
 - OS: [e.g. Windows 11]
 - Browser: [e.g. Chrome 120]
-- Version: [e.g. 1.0.0]
+- Version: [e.g. 2.0.0]
 
 **Additional context**
 Any other relevant information
@@ -305,18 +354,20 @@ Yes/No
 - User guides: `docs/FEATURES.md`
 - Architecture: `docs/ARCHITECTURE.md`
 - Setup: `docs/GETTING_STARTED.md`
+- Database: `docs/DATABASE_SCHEMA.md`
+- Deployment: `docs/DEPLOYMENT.md`
 
 ## 🎯 Priority Labels
 
 Issues and PRs use these labels:
 
-- `critical` - Urgent issues
-- `high-priority` - Important features/fixes
-- `good-first-issue` - Great for newcomers
-- `help-wanted` - Community contributions welcome
-- `enhancement` - New features
-- `bug` - Bug reports
-- `documentation` - Doc improvements
+- `critical` — Urgent issues
+- `high-priority` — Important features/fixes
+- `good-first-issue` — Great for newcomers
+- `help-wanted` — Community contributions welcome
+- `enhancement` — New features
+- `bug` — Bug reports
+- `documentation` — Doc improvements
 
 ## ✅ Review Checklist
 
@@ -330,10 +381,8 @@ Before submitting PR, ensure:
 - [ ] Documentation updated (if needed)
 - [ ] Commit messages follow convention
 - [ ] Branch is up to date with main
-
-
-
-
+- [ ] API routes handle authentication properly
+- [ ] Inngest functions have proper error handling
 
 ## 📞 Getting Help
 
@@ -341,8 +390,6 @@ Before submitting PR, ensure:
 - 📧 Create an issue with the `question` label
 - 📖 Check the [documentation](./README.md)
 
-
-
 ---
 
-**Last Updated:** January 17, 2026
+**Last Updated:** April 18, 2026

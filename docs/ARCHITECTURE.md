@@ -16,62 +16,75 @@ This document provides a comprehensive overview of the Vision KeyInsights archit
 └─────────────┘   │  API      │
                   └─────┬─────┘
                         │
-       ┌────────────────┼────────────────┐
-       │                │                │
-┌──────▼──────┐  ┌─────▼─────┐   ┌─────▼─────┐
-│  PostgreSQL │  │  Inngest  │   │  ImageKit │
-│  Database   │  │  Queue    │   │  Storage  │
-└─────────────┘  └─────┬─────┘   └───────────┘
-                       │
-              ┌────────┼────────┐
-              │                 │
-       ┌──────▼──────┐   ┌─────▼─────┐
-       │ OpenRouter  │   │ Replicate │
-       │    (AI)     │   │  (Images) │
-       └─────────────┘   └───────────┘
+       ┌────────┬───────┼────────┬────────────┐
+       │        │       │        │            │
+┌──────▼──────┐ │ ┌─────▼─────┐ │     ┌──────▼──────┐
+│  PostgreSQL │ │ │  Inngest  │ │     │  ImageKit   │
+│  Database   │ │ │  Queue    │ │     │  Storage    │
+└─────────────┘ │ └─────┬─────┘ │     └─────────────┘
+                │       │       │
+         ┌──────▼───┐   │  ┌────▼──────┐
+         │ YouTube  │   │  │ Bright    │
+         │ Data API │   │  │ Data      │
+         └──────────┘   │  └───────────┘
+               ┌────────┼────────┐
+               │                 │
+        ┌──────▼──────┐   ┌─────▼─────┐
+        │ OpenRouter  │   │ Replicate │
+        │ (Gemini AI) │   │ (Imagen)  │
+        └─────────────┘   └───────────┘
 ```
 
 ## 🛠️ Technology Stack
 
 ### Frontend
-- **Framework:** Next.js 15 (App Router)
+- **Framework:** Next.js 14 (App Router)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS
-- **UI Components:** shadcn/ui
+- **UI Components:** shadcn/ui + Radix UI primitives
 - **Icons:** Lucide React
-- **State Management:** React Hooks
+- **State Management:** React Hooks (useState, useEffect)
+- **HTTP Client:** Axios
 
 ### Backend
 - **Runtime:** Node.js
 - **Framework:** Next.js API Routes
-- **Database:** PostgreSQL
+- **Database:** PostgreSQL (Neon serverless)
 - **ORM:** Drizzle ORM
 - **Background Jobs:** Inngest
 
 ### Authentication
 - **Provider:** Clerk
-- **Features:** 
+- **Features:**
   - Email/Password authentication
-  - OAuth providers
+  - Google & GitHub OAuth providers
   - Session management
   - User profiles
+  - Route protection via middleware
+
+### AI & ML Services
+- **Text Generation:** Google Gemini 2.5 Flash (via OpenRouter)
+- **Image Generation:** Google Imagen-4 Fast (via Replicate)
+
+### External APIs
+- **YouTube Data API v3** — Video search, metadata, statistics
+- **Bright Data** — Web scraping for Google search results
 
 ### Cloud Services
-- **Image Storage:** ImageKit
-- **AI Text Generation:** OpenRouter (Gemini 2.5 Flash)
-- **AI Image Generation:** Replicate (Google Imagen-4)
+- **Image Storage & CDN:** ImageKit
 - **Background Processing:** Inngest
+- **Database Hosting:** Neon (serverless PostgreSQL)
 
 ### DevOps
-- **Version Control:** Git
+- **Version Control:** Git + GitHub
 - **Hosting:** Vercel (recommended)
-- **Database Hosting:** Neon/Supabase (recommended)
+- **CI/CD:** Vercel automatic deployments
 
 ## 📦 Key Components
 
 ### 1. Authentication System (Clerk)
 
-**Location:** `app/(auth)/`
+**Location:** `app/(auth)/`, `middleware.tsx`
 
 Handles user authentication and authorization:
 - Sign up/Sign in pages
@@ -81,117 +94,114 @@ Handles user authentication and authorization:
 
 ```typescript
 // middleware.tsx
-import { clerkMiddleware } from '@clerk/nextjs/server';
-export default clerkMiddleware();
+const isPublicRoute = createRouteMatcher([
+    '/sign-in(.*)',
+    '/sign-up(.*)',
+    '/',
+    '/api/inngest',
+    '/api/thumbnail-search'
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+    if (!isPublicRoute(req)) {
+        await auth.protect()
+    }
+});
 ```
 
 ### 2. Database Layer (Drizzle ORM)
 
 **Location:** `configs/db.tsx`, `configs/schema.ts`
 
-**Schema:**
-```typescript
-// Users Table
-- id: integer (PK, auto-increment)
-- name: varchar
-- email: varchar (unique)
+**Tables:**
 
-// Thumbnails Table
-- id: integer (PK, auto-increment)
-- userInput: varchar
-- thumbnailUrl: varchar
-- refImage: varchar
-- userEmail: varchar (FK → users.email)
-- createdOn: varchar
-```
+| Table | Purpose |
+|-------|---------|
+| `users` | User accounts (synced from Clerk) |
+| `thumbnails` | Generated thumbnail metadata |
+| `AiContent` | AI-generated content (titles, descriptions, tags, prompts) |
+| `TrendingKeywords` | SEO keyword analysis results |
+
+See [Database Schema](./DATABASE_SCHEMA.md) for full details.
 
 ### 3. API Routes
 
 **Location:** `app/api/`
 
-#### `/api/generate-thumbnail`
-- **POST:** Initiates thumbnail generation
-  - Accepts: `userInput`, `refImage` (optional), `faceImage` (optional)
-  - Returns: Inngest run ID
-- **GET:** Fetches user's thumbnail history
-  - Returns: List of generated thumbnails
-
-#### `/api/inngest`
-- Inngest webhook endpoint for background job execution
-
-#### `/api/user`
-- User-related operations (future use)
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/generate-thumbnail` | POST | Initiates AI thumbnail generation via Inngest |
+| `/api/generate-thumbnail` | GET | Fetches user's thumbnail history |
+| `/api/content-generator` | POST | Triggers AI content generation workflow |
+| `/api/trending-keywords` | GET | Triggers trending keywords analysis |
+| `/api/thumbnail-search` | GET | Searches YouTube for video thumbnails |
+| `/api/outlier` | GET | Analyzes YouTube videos for outlier detection |
+| `/api/inngest` | POST | Inngest webhook endpoint |
+| `/api/user` | — | User operations (future) |
 
 ### 4. Background Job Processing (Inngest)
 
 **Location:** `inngest/functions.ts`
 
-#### Thumbnail Generation Workflow
+#### Registered Functions
 
-```typescript
-generateAiThumbnail(event) {
-  1. Upload Images
-     ├─ Upload refImage to ImageKit (if provided)
-     └─ Upload faceImage to ImageKit (if provided)
-  
-  2. Generate Thumbnail Prompt
-     ├─ Send to OpenRouter (Gemini 2.5 Flash)
-     ├─ Include refImage context (if available)
-     └─ Return optimized prompt
-  
-  3. Generate Image
-     ├─ Send prompt to Replicate (Imagen-4)
-     ├─ Parameters: 16:9 aspect ratio, PNG format
-     └─ Return generated image URL
-  
-  4. Upload Thumbnail
-     ├─ Download generated image
-     └─ Upload to ImageKit for permanent storage
-  
-  5. Save to Database
-     ├─ Store thumbnail metadata
-     └─ Link to user account
-  
-  6. Return Result
-}
+| Function ID | Event | Description |
+|-------------|-------|-------------|
+| `ai/generate-thumbnail` | `ai/generate-thumbnail` | 5-step thumbnail generation workflow |
+| `ai/generate-content` | `ai/generate-content` | 4-step content generation workflow |
+| `ai/get-trending-keywords` | `ai/get-trending-keywords` | 4-step keyword analysis workflow |
+
+#### Thumbnail Generation Workflow
+```
+1. UploadImage         → Upload refImage to ImageKit (if provided)
+2. GenerateThumbnailPrompt → Generate prompt via Gemini 2.5 Flash
+3. Generate Image      → Create thumbnail with Imagen-4 Fast
+4. Upload Thumbnail    → Save final image to ImageKit CDN
+5. SaveToDB            → Store metadata in database
 ```
 
-### 5. UI Components
+#### Content Generation Workflow
+```
+1. GenerateContent          → Generate titles, description, tags, prompts via AI
+2. GenerateThumbnailImages  → Create thumbnails from prompts (with rate limit retry)
+3. UploadThumbnails         → Upload images to ImageKit CDN
+4. SaveContentToDB          → Store all content in AiContent table
+```
 
-#### Sidebar Navigation
-**Location:** `app/_components/AppSidebar.tsx`
+#### Trending Keywords Workflow
+```
+1. getGoogleSearchResult → Fetch Google video search titles via Bright Data
+2. Youtube Result        → Fetch YouTube video titles via YouTube Data API
+3. generatekeywords      → Extract SEO keywords from combined results via AI
+4. SaveToDB              → Store keywords in TrendingKeywords table
+```
 
-Features:
-- Route navigation
-- Active route highlighting
-- Responsive design
+### 5. UI Pages
 
-#### Dashboard
-**Location:** `app/(routes)/dashboard/`
+| Page | Location | Description |
+|------|----------|-------------|
+| Dashboard | `app/(routes)/dashboard/` | Welcome banner, feature overview, quick actions |
+| Thumbnail Generator | `app/(routes)/thumbnail-generator/` | Input form, reference upload, gallery |
+| Content Generator | `app/(routes)/content-generator/` | AI content generation with polling |
+| Trending Keywords | `app/(routes)/trending-keywords/` | Keyword analysis with score visualization |
+| Thumbnail Search | `app/(routes)/thumbnail-search/` | YouTube thumbnail discovery |
+| Outlier Detection | `app/(routes)/outlier/` | Viral video analysis with smart scoring |
 
-Components:
-- Welcome banner
-- Feature list
-- Quick actions
+### 6. Services
 
-#### Thumbnail Generator
-**Location:** `app/(routes)/thumbnail-generator/`
+**Location:** `services/GlobalApi.tsx`
 
-Components:
-- Input form for user prompt
-- Reference image upload
-- Face image upload (future)
-- Thumbnail generation trigger
-- Loading states
-
-#### Thumbnail List
-**Location:** `app/(routes)/thumbnail-generator/_components/ThumbnailList.tsx`
-
-Features:
-- Grid display of thumbnails
-- Image preview in new tab
-- Skeleton loading states
-- Responsive grid layout
+```typescript
+// RunStatus — polls Inngest for workflow status
+export const RunStatus = async (eventId: string) => {
+    const response = await fetch(
+        `${process.env.NEXT_PUBLIC_INNGEST_SERVER_URL}/${eventId}/runs`,
+        { headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_INNGEST_SIGNING_KEY}` } }
+    );
+    const json = await response.json();
+    return json.data;
+}
+```
 
 ## 🔄 Data Flow
 
@@ -208,17 +218,75 @@ Background Job Starts
     ↓
 1. Upload refImage to ImageKit
     ↓
-2. Generate Prompt (OpenRouter)
+2. Generate Prompt (OpenRouter → Gemini 2.5 Flash)
     ↓
-3. Generate Image (Replicate)
+3. Generate Image (Replicate → Imagen-4 Fast)
     ↓
-4. Upload Thumbnail (ImageKit)
+4. Upload Thumbnail (ImageKit CDN)
     ↓
 5. Save to Database
     ↓
-Job Complete
+Job Complete → User sees thumbnail in gallery
+```
+
+### Content Generator Flow
+
+```
+User Input (topic)
     ↓
-User sees thumbnail in gallery
+POST /api/content-generator
+    ↓
+Inngest Event: ai/generate-content
+    ↓
+1. Generate content via AI (titles, description, tags, prompts)
+    ↓
+2. Generate thumbnail images from prompts (with rate limit handling)
+    ↓
+3. Upload thumbnails to ImageKit
+    ↓
+4. Save everything to AiContent table
+    ↓
+Frontend polls RunStatus → Displays results
+```
+
+### Trending Keywords Flow
+
+```
+User Input (keyword/topic)
+    ↓
+GET /api/trending-keywords?query=...
+    ↓
+Inngest Event: ai/get-trending-keywords
+    ↓
+1. Google Search via Bright Data → extract video titles
+    ↓
+2. YouTube Data API → extract video titles
+    ↓
+3. Combine titles → AI extracts SEO keywords with scores
+    ↓
+4. Save to TrendingKeywords table
+    ↓
+Frontend polls RunStatus → Displays sorted keywords
+```
+
+### Outlier Detection Flow
+
+```
+User Search Query
+    ↓
+GET /api/outlier?query=...
+    ↓
+YouTube Data API → Search videos
+    ↓
+YouTube Data API → Get video statistics
+    ↓
+Calculate metrics:
+  - Views per day
+  - Engagement rate
+  - IQR-based outlier detection
+  - Smart score (weighted composite)
+    ↓
+Return annotated results → Frontend renders analysis
 ```
 
 ### Authentication Flow
@@ -226,11 +294,11 @@ User sees thumbnail in gallery
 ```
 User visits protected route
     ↓
-Middleware checks session
+Middleware checks session (Clerk)
     ↓
 No session? → Redirect to /sign-in
     ↓
-Sign in with Clerk
+Sign in with Clerk (Email/Google/GitHub)
     ↓
 Session created
     ↓
@@ -240,50 +308,58 @@ Access granted to protected routes
 ## 🔐 Security Considerations
 
 ### API Keys
-- Stored in environment variables
-- Never exposed to client
+- Stored in environment variables (`.env.local`)
+- Never exposed to client (server-side only)
 - Separate keys for development and production
 
 ### Authentication
 - Clerk handles session security
 - Protected routes via middleware
-- User-specific data isolation
+- User-specific data isolation (queries filtered by `userEmail`)
+
+### Public Routes
+Only these routes are accessible without authentication:
+- `/` (homepage)
+- `/sign-in`, `/sign-up`
+- `/api/inngest` (Inngest webhook, verified by signing key)
+- `/api/thumbnail-search` (public search)
 
 ### Database
 - User data linked to Clerk email
-- No direct user authentication in DB
 - Foreign key constraints for data integrity
+- No direct user authentication in DB
 
 ## 🚀 Performance Optimizations
 
 ### Image Optimization
 - Next.js Image component for automatic optimization
-- ImageKit CDN for fast delivery
-- Lazy loading for thumbnail gallery
+- ImageKit CDN for fast global delivery
+- Lazy loading for thumbnail galleries
 
 ### Background Processing
-- Inngest handles long-running tasks
-- Non-blocking API responses
-- Async/await for parallel operations
+- Inngest handles long-running AI tasks (15–60 seconds)
+- Non-blocking API responses with polling
+- Rate limit retry logic with exponential backoff (Replicate API)
+- 12-second delay between batch image generation requests
 
 ### Caching
-- Next.js automatic caching
-- Static generation where possible
-- Dynamic routes with ISR (future)
+- Next.js automatic caching for static assets
+- YouTube API responses can be cached (future improvement)
 
 ## 📈 Scalability
 
 ### Current Limitations
-- Replicate API rate limits
-- ImageKit storage limits
-- Database connection pooling
+- Replicate API rate limits (6 req/min on free tier)
+- YouTube Data API quota (10,000 units/day)
+- ImageKit storage limits (plan-dependent)
+- Database connection pooling (Neon serverless handles this)
 
 ### Future Improvements
-- Redis caching layer
+- Redis caching layer for API responses
 - Queue management for high traffic
-- CDN optimization
+- CDN optimization for generated images
 - Database read replicas
-- Microservices architecture
+- User-level rate limiting
 
 ## 🧪 Testing Strategy
 
@@ -296,12 +372,12 @@ Access granted to protected routes
 - Unit tests (Jest + React Testing Library)
 - Integration tests
 - E2E tests (Playwright)
-- API testing (Postman/Newman)
+- API testing
 
 ## 📊 Monitoring & Logging
 
 ### Current
-- Console logging
+- Console logging for all Inngest workflow steps
 - Inngest dashboard for job monitoring
 - Vercel analytics (when deployed)
 
@@ -314,9 +390,10 @@ Access granted to protected routes
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.0 | Jan 2026 | Initial release with core features |
+| 1.0.0 | Jan 2026 | Initial release: Thumbnail generation, auth, gallery |
+| 2.0.0 | Apr 2026 | Content generator, trending keywords, thumbnail search, outlier detection |
 
 ---
 
-**Last Updated:** January 17, 2026  
+**Last Updated:** April 18, 2026  
 **Maintained By:** [Ishan4705](https://github.com/Ishan4705)
