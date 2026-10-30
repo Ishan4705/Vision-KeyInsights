@@ -1,7 +1,5 @@
 # Vision KeyInsights
 
-**Private Development Project**
-
 AI-powered YouTube toolkit that helps content creators generate professional thumbnails, SEO-optimized content, trending keywords, and data-driven insights — all in one platform.
 
 ## 🚀 Features
@@ -134,44 +132,6 @@ vercel deploy --prod
 - [Features Guide](./docs/FEATURES.md) — Explore all features in detail
 - [API Reference](./docs/API_REFERENCE.md) — API documentation
 - [FAQ](./docs/FAQ.md) — Common questions answered
-
----
-
-## 👥 Development Team
-
-This is a private development project. For internal team members:
-
-- Review the [Contributing Guide](./docs/CONTRIBUTING.md) for development standards
-- Follow code style guidelines
-- Keep documentation updated as features are added
-
----
-
-## 📝 License
-
-This project is private and proprietary. All rights reserved.
-
----
-
-## 🙏 Acknowledgments
-
-- [Next.js](https://nextjs.org) — React framework for production
-- [Vercel](https://vercel.com) — Hosting and deployment
-- [Clerk](https://clerk.com) — Authentication
-- [Replicate](https://replicate.com) — AI image generation
-- [OpenRouter](https://openrouter.ai) — AI text generation
-- [ImageKit](https://imagekit.io) — Image storage and CDN
-- [Inngest](https://www.inngest.com/) — Background job processing
-- [Bright Data](https://brightdata.com) — Web scraping infrastructure
-- [YouTube Data API](https://developers.google.com/youtube/v3) — Video analytics
-
----
-
-## 📞 Internal Support
-
-- 📖 [Documentation](./docs/README.md)
-- 💬 Contact development team for questions
-- 📋 Track issues internally
 
 ---
 
